@@ -23,10 +23,15 @@ public class AIController : MonoBehaviour
     public EShoppingState shoppingState;
     public EMovementState movementState;
     public Transform patrolParent;
+    public Transform handTransform;
 
     private List<Transform> _patrolPoints = new();
     private NavMeshAgent _agent;
     private Transform _targetPoint;
+    private ShelfController _currentShelf;
+    private CashController _currentCash;
+    private GameObject _product;
+    private IEnumerator NaturalDec;
     private void Start()
     {
         _agent = GetComponent<NavMeshAgent>();
@@ -34,7 +39,8 @@ public class AIController : MonoBehaviour
         InitializeEvents();
         InitializePatrolPoints();
 
-        StartCoroutine(NaturalDecision());
+        NaturalDec = NaturalDecision();
+        StartCoroutine(NaturalDec);
     }
 
     private void Update()
@@ -91,45 +97,76 @@ public class AIController : MonoBehaviour
         }
     }
 
+    private void CollectProducts()
+    {
+        if (_currentShelf.CheckSlotsEmpty())
+        {
+            // raf boş
+        }
+        else
+        {
+            StopCoroutine(NaturalDec);
+            
+            _product = _currentShelf.GetProductFromSlot();
+            _product.transform.position = handTransform.position;
+            _product.transform.parent = handTransform;
+            
+            if (GameManager.Instance.GetCashCount() > 0)
+            {
+                StartCoroutine(UpdateShoppingState(EShoppingState.Cashing));
+                StartCoroutine(UpdateMovementState(EMovementState.Moving));
+            }
+            else if (GameManager.Instance.GetCashCount() == 0)
+            {
+                StartCoroutine(UpdateShoppingState(EShoppingState.Idle));
+                StartCoroutine(UpdateMovementState(EMovementState.Moving));
+            }
+        }
+    }
+
+    private void Payment()
+    {
+        Destroy(_product);
+        
+        StartCoroutine(UpdateShoppingState(EShoppingState.Exit));
+        StartCoroutine(UpdateMovementState(EMovementState.Moving));
+    }
+
     private IEnumerator NaturalDecision()
     {
         int randDuration = UnityEngine.Random.Range(1, 5);
         
         yield return new WaitForSeconds(randDuration);
-        
-        Debug.Log("Natural Decision");
 
         if (GameManager.Instance.GetShelfCount() > 0)
         {
-            Debug.Log("There is Shelf");
-            StartCoroutine(UpdateShoppingState(EShoppingState.ProductSearch));
-            StartCoroutine(UpdateMovementState(EMovementState.Moving));
+            int randSearch = UnityEngine.Random.Range(0, 2);
             
-            yield return new WaitForSeconds(1);
+            if (randSearch == 0)
+            {
+                StartCoroutine(UpdateShoppingState(EShoppingState.ProductSearch));
+                StartCoroutine(UpdateMovementState(EMovementState.Moving));
+            
+                yield return new WaitForSeconds(1);
+            }
+            else
+            {
+                StartCoroutine(UpdateShoppingState(EShoppingState.Idle));
+                StartCoroutine(UpdateMovementState(EMovementState.Moving));
+            
+                yield return new WaitForSeconds(1);
+            }
         }
         else if (GameManager.Instance.GetShelfCount() == 0)
         {
-            Debug.Log("There is No Shelf");
             StartCoroutine(UpdateShoppingState(EShoppingState.Idle));
             StartCoroutine(UpdateMovementState(EMovementState.Moving));
             
             yield return new WaitForSeconds(1);
         }
 
-        /*if (GameManager.Instance.GetCashCount() > 0)
-        {
-            StartCoroutine(UpdateShoppingState(EShoppingState.Cashing));
-            StartCoroutine(UpdateMovementState(EMovementState.Moving));
-            yield return new WaitForSeconds(1);
-        }
-        else if (GameManager.Instance.GetCashCount() == 0)
-        {
-            StartCoroutine(UpdateShoppingState(EShoppingState.Idle));
-            StartCoroutine(UpdateMovementState(EMovementState.Moving));
-            yield return new WaitForSeconds(1);
-        }*/
-
-        StartCoroutine(NaturalDecision());
+        NaturalDec = NaturalDecision();
+        StartCoroutine(NaturalDec);
     }
     private void SetTargetPoint()
     {
@@ -141,11 +178,13 @@ public class AIController : MonoBehaviour
                 break;
             
             case EShoppingState.ProductSearch:
-                _targetPoint = GameManager.Instance.GetRandomShelf().transform;
+                _currentShelf = GameManager.Instance.GetRandomShelf();
+                _targetPoint = _currentShelf.customerTransform;
                 break;
             
             case EShoppingState.Cashing:
-                _targetPoint = GameManager.Instance.GetRandomCash().transform;
+                _currentCash = GameManager.Instance.GetRandomCash();
+                _targetPoint = _currentCash.customerTransform;
                 break;
             
             case EShoppingState.Exit:
@@ -160,5 +199,29 @@ public class AIController : MonoBehaviour
         Transform targetPoint = _patrolPoints[randIndex];
         
         return targetPoint;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.GetComponent<ShelfController>())
+        {
+            Debug.Log("Shelf Controller Triggered");
+            
+            if (shoppingState == EShoppingState.ProductSearch)
+            {
+                Debug.Log("Shelf Controller Product Collect");
+                CollectProducts();
+            }
+        }
+
+        if (other.GetComponent<CashController>())
+        {
+            Payment();
+        }
+
+        if (other.GetComponent<Exit>())
+        {
+            Destroy(gameObject);
+        }
     }
 }

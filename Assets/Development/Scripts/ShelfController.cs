@@ -7,6 +7,7 @@ using UnityEngine.TextCore.Text;
 
 public class ShelfController : Interactables
 {
+    public Transform customerTransform;
     [SerializeField] private List<SlotController> _slots;
     private List<GameObject> _tempItems = new();
 
@@ -56,6 +57,41 @@ public class ShelfController : Interactables
         {
             interactingObj.GetComponent<CharacterController>().RemoveItemFromList(t);
         }
+    }
+
+    public bool CheckSlotsEmpty()
+    {
+        foreach (var s in _slots)
+        {
+            if (s.slotObject != null)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public GameObject GetProductFromSlot()
+    {
+        foreach (var s in _slots)
+        {
+            if (s.slotObject != null)
+            {
+                GameObject product = s.slotObject;
+
+                s.slotObject = null;
+                
+                return product;
+            }
+        }
+
+        return null;
+    }
+
+    public List<SlotController> GetSlots()
+    {
+        return _slots;
     }
 }
 
