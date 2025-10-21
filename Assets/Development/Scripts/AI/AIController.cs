@@ -32,9 +32,13 @@ public class AIController : MonoBehaviour
     private CashController _currentCash;
     private GameObject _product;
     private IEnumerator NaturalDec;
+    private Animator _animator;
+
+    private bool _checkUpdate = false;
     private void Start()
     {
         _agent = GetComponent<NavMeshAgent>();
+        _animator = GetComponent<Animator>();
         
         InitializeEvents();
         InitializePatrolPoints();
@@ -47,8 +51,16 @@ public class AIController : MonoBehaviour
     {
         if (movementState != EMovementState.Moving) return;
         
-       // if(CalculateDistance() == true) 
-         //   StartCoroutine(UpdateMovementState(EMovementState.Waiting));
+        Debug.Log("Distance == " + CalculateDistance());
+        if (CalculateDistance() < 1f && _checkUpdate)
+        {
+            _checkUpdate = false;
+            _animator.SetBool("IsMoving", false);
+            
+            StopCoroutine(NaturalDec);
+            NaturalDec = NaturalDecision();
+            StartCoroutine(NaturalDec);
+        }
     }
 
     private void InitializeEvents()
@@ -64,12 +76,13 @@ public class AIController : MonoBehaviour
         }
     }
 
-    private bool CalculateDistance()
+    private float CalculateDistance()
     {
-        float distance = Vector3.Distance(transform.position, _targetPoint.position);
-        bool result = distance < 5f;
-
-        return result;
+        Vector3 myTransform = new Vector3(transform.position.x, 0, transform.position.z);
+        Vector3 targetTransform = new Vector3(_targetPoint.position.x, 0, _targetPoint.position.z);
+        
+        float distance = Vector3.Distance(myTransform, targetTransform);
+        return distance;
     }
 
     private IEnumerator UpdateShoppingState(EShoppingState newState)
@@ -91,6 +104,7 @@ public class AIController : MonoBehaviour
                 break;
             
             case  EMovementState.Moving:
+                _animator.SetBool("IsMoving", true);
                 SetTargetPoint();
                 _agent.SetDestination(_targetPoint.position);
                 break;
@@ -99,28 +113,11 @@ public class AIController : MonoBehaviour
 
     private void CollectProducts()
     {
-        if (_currentShelf.CheckSlotsEmpty())
+        if (_currentShelf.CheckSlotsEmpty() == false)
         {
-            // raf boş
-        }
-        else
-        {
-            StopCoroutine(NaturalDec);
-            
             _product = _currentShelf.GetProductFromSlot();
             _product.transform.position = handTransform.position;
             _product.transform.parent = handTransform;
-            
-            if (GameManager.Instance.GetCashCount() > 0)
-            {
-                StartCoroutine(UpdateShoppingState(EShoppingState.Cashing));
-                StartCoroutine(UpdateMovementState(EMovementState.Moving));
-            }
-            else if (GameManager.Instance.GetCashCount() == 0)
-            {
-                StartCoroutine(UpdateShoppingState(EShoppingState.Idle));
-                StartCoroutine(UpdateMovementState(EMovementState.Moving));
-            }
         }
     }
 
@@ -128,49 +125,56 @@ public class AIController : MonoBehaviour
     {
         Destroy(_product);
         
+        StopCoroutine(NaturalDec);
+        
         StartCoroutine(UpdateShoppingState(EShoppingState.Exit));
         StartCoroutine(UpdateMovementState(EMovementState.Moving));
     }
 
     private IEnumerator NaturalDecision()
     {
+        bool canIdleMove = true;
+        
         int randDuration = UnityEngine.Random.Range(1, 5);
         
         yield return new WaitForSeconds(randDuration);
 
-        if (GameManager.Instance.GetShelfCount() > 0)
+        if (_product != null)
         {
-            int randSearch = UnityEngine.Random.Range(0, 2);
-            
-            if (randSearch == 0)
+            if (GameManager.Instance.GetCashCount() > 0)
             {
-                StartCoroutine(UpdateShoppingState(EShoppingState.ProductSearch));
+                StartCoroutine(UpdateShoppingState(EShoppingState.Cashing));
                 StartCoroutine(UpdateMovementState(EMovementState.Moving));
-            
-                yield return new WaitForSeconds(1);
-            }
-            else
-            {
-                StartCoroutine(UpdateShoppingState(EShoppingState.Idle));
-                StartCoroutine(UpdateMovementState(EMovementState.Moving));
-            
-                yield return new WaitForSeconds(1);
+
+                canIdleMove = false;
             }
         }
-        else if (GameManager.Instance.GetShelfCount() == 0)
+        else
+        {
+            if (GameManager.Instance.GetShelfCount() > 0)
+            {
+                int randSearch = UnityEngine.Random.Range(0, 2);
+            
+                if (randSearch == 0)
+                {
+                    StartCoroutine(UpdateShoppingState(EShoppingState.ProductSearch));
+                    StartCoroutine(UpdateMovementState(EMovementState.Moving));
+                    
+                    canIdleMove = false;
+                }
+            }
+        }
+
+        if (canIdleMove == true)
         {
             StartCoroutine(UpdateShoppingState(EShoppingState.Idle));
             StartCoroutine(UpdateMovementState(EMovementState.Moving));
-            
-            yield return new WaitForSeconds(1);
         }
 
-        NaturalDec = NaturalDecision();
-        StartCoroutine(NaturalDec);
+        _checkUpdate = true;
     }
     private void SetTargetPoint()
     {
-        Debug.Log("SetTargetPoint = " + shoppingState);
         switch (shoppingState)
         {
             case EShoppingState.Idle:
@@ -205,11 +209,8 @@ public class AIController : MonoBehaviour
     {
         if (other.GetComponent<ShelfController>())
         {
-            Debug.Log("Shelf Controller Triggered");
-            
             if (shoppingState == EShoppingState.ProductSearch)
             {
-                Debug.Log("Shelf Controller Product Collect");
                 CollectProducts();
             }
         }
