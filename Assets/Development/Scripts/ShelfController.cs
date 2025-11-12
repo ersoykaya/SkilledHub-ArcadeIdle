@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.TextCore.Text;
@@ -41,9 +42,14 @@ public class ShelfController : Interactables
                     {
                         s.AddItem(currentItem);
                         _tempItems.Add(currentItem);
-                    
-                        currentItem.transform.position = s.transform.position;
-                        currentItem.transform.rotation = s.transform.rotation;
+
+                        currentItem.transform.DOMove(s.transform.position, .5f).SetEase(Ease.OutBounce);
+                        currentItem.transform.DORotateQuaternion(s.transform.rotation, .5f).SetEase(Ease.OutBounce);
+                     //   currentItem.transform.position = s.transform.position;
+                     //   currentItem.transform.rotation = s.transform.rotation;
+                        
+                        Collecting item = currentItem.GetComponent<Collecting>();
+                        item._collectSFX.Play();
                     
                         interactingObj.GetComponent<CharacterController>().DetachItem(currentItem);
 

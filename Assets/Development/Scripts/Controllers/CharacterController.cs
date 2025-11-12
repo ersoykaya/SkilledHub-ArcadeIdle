@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 public class CharacterController : MonoBehaviour
@@ -20,13 +21,31 @@ public class CharacterController : MonoBehaviour
     {
         _rigidbody = GetComponent<Rigidbody>();
         _animator = GetComponent<Animator>();
+        
+        _rigidbody.isKinematic = true;
+    }
 
+    private void OnEnable()
+    {
         GameManager.Instance.OnItemCollected += AttachItem;
+    }
+
+    private void OnDisable()
+    {
+        GameManager.Instance.OnItemCollected -= AttachItem;
     }
 
     public void MoveCharacter(Vector3 direction)
     {
-        _rigidbody.linearVelocity = direction * moveSpeed;
+        if (direction == Vector3.zero)
+        {
+            _rigidbody.isKinematic = true;
+        }
+        else
+        {
+            _rigidbody.isKinematic = false;
+        }
+        _rigidbody.linearVelocity = (direction * moveSpeed) + Physics.gravity;
         
         Quaternion lookRot = Quaternion.LookRotation(direction);
         lookRot.x = 0;
@@ -41,16 +60,16 @@ public class CharacterController : MonoBehaviour
     }
 
     public void AttachItem(GameObject item)
-    {
+    { 
         float heightLevel = collectedItems.Count * 0.5f;
-       item.transform.position = handSocket.transform.position + (Vector3.up * heightLevel);
-       item.transform.rotation = handSocket.transform.rotation;
-       item.transform.parent =  handSocket.transform;
+        item.transform.parent = handSocket.transform;
+        item.transform.DOLocalMove(handSocket.transform.localPosition + Vector3.up * heightLevel, .5f).SetEase(Ease.OutBack);
+        item.transform.DOLocalRotateQuaternion(handSocket.transform.localRotation, .5f).SetEase(Ease.OutBack);
 
-       _tempObject = item;
-       collectedItems.Add(item);
+        _tempObject = item;
+        collectedItems.Add(item);
        
-       _animator.SetBool("HasItem", true);
+        _animator.SetBool("HasItem", true);
     }
 
     public void DetachItem(GameObject item)

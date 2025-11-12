@@ -5,6 +5,7 @@ using UnityEngine.TextCore.Text;
 public class Collecting : Interactables
 {
     [SerializeField] private Rigidbody _rigidbody;
+    public AudioSource _collectSFX;
 
     private void Start()
     {
@@ -18,5 +19,7 @@ public class Collecting : Interactables
         SetCanInteractable(false);
         
         GameManager.Instance.OnItemCollected.Invoke(gameObject);
+        
+        _collectSFX.Play();
     }
 }

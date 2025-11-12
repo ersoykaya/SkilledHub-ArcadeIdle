@@ -5,6 +5,7 @@ using UnityEngine.Events;
 public class InputManager : MonoBehaviour
 {
     public static InputManager Instance;
+    public Action OnMouseClicked;
     public Action<Color> OnSpaceBarClicked;
     
     private Vector3 _beginMousePosition;
@@ -28,6 +29,8 @@ public class InputManager : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             _beginMousePosition = Input.mousePosition; // (x, y, 0)
+            
+            OnMouseClicked.Invoke();
         }
 
         if (Input.GetMouseButton(0))

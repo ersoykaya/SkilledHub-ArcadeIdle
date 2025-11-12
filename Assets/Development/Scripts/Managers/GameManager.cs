@@ -9,6 +9,7 @@ public class GameManager : MonoBehaviour
     public Action<GameObject> OnItemCollected;
     public Action<ShelfController> OnShelfCreated;
     public Action<CashController> OnCashCreated;
+    public Action<GameObject> OnCustomerExit;
 
     public Transform exitTransform;
     
@@ -24,18 +25,15 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        OnShelfCreated += AddShelfToList;
-        OnCashCreated += AddCashToList;
-    }
-
-    public void AddShelfToList(ShelfController newShelf)
-    {
-        _allShelves.Add(newShelf);
-    }
-
-    public void AddCashToList(CashController newCash)
-    {
-        _allCashes.Add(newCash);
+        OnShelfCreated += (newShelf) =>
+        {
+            _allShelves.Add(newShelf);
+        };
+        
+        OnCashCreated += (newCash) =>
+        {
+            _allCashes.Add(newCash);
+        };
     }
 
     public int GetShelfCount()

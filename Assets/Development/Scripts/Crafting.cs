@@ -4,6 +4,7 @@ public class Crafting : Interactables
 {
     public GameObject craftPrefab;
     public Transform craftTransform;
+    public float requiredPrice;
     
     private bool _isCrafted = false;
     protected override void DoAction(GameObject interactingObj)
@@ -12,8 +13,12 @@ public class Crafting : Interactables
 
         if (!_isCrafted)
         {
-            GameObject craft = Instantiate(craftPrefab, craftTransform.position, craftTransform.rotation);
-            _isCrafted = true;
+            if (EconomyManager.Instance.Purchase(requiredPrice) == true)
+            {
+                GameObject craft = Instantiate(craftPrefab, craftTransform.position, craftTransform.rotation);
+                _isCrafted = true;
+                Destroy(gameObject);
+            }
         }
     }
 }

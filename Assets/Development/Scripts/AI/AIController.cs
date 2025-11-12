@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
@@ -22,9 +23,9 @@ public class AIController : MonoBehaviour
 {
     public EShoppingState shoppingState;
     public EMovementState movementState;
-    public Transform patrolParent;
     public Transform handTransform;
 
+    private Transform _patrolParent;
     private List<Transform> _patrolPoints = new();
     private NavMeshAgent _agent;
     private Transform _targetPoint;
@@ -35,6 +36,12 @@ public class AIController : MonoBehaviour
     private Animator _animator;
 
     private bool _checkUpdate = false;
+
+    private void Awake()
+    {
+        _patrolParent = GameObject.Find("Transforms").transform;
+    }
+
     private void Start()
     {
         _agent = GetComponent<NavMeshAgent>();
@@ -70,9 +77,9 @@ public class AIController : MonoBehaviour
 
     private void InitializePatrolPoints()
     {
-        for (int i = 0; i < patrolParent.childCount; i++)
+        for (int i = 0; i < _patrolParent.childCount; i++)
         {
-            _patrolPoints.Add(patrolParent.GetChild(i));
+            _patrolPoints.Add(_patrolParent.GetChild(i));
         }
     }
 
@@ -116,8 +123,8 @@ public class AIController : MonoBehaviour
         if (_currentShelf.CheckSlotsEmpty() == false)
         {
             _product = _currentShelf.GetProductFromSlot();
-            _product.transform.position = handTransform.position;
             _product.transform.parent = handTransform;
+            _product.transform.DOLocalMove(handTransform.localPosition, .5f).SetEase(Ease.OutBack);
         }
     }
 
@@ -126,6 +133,9 @@ public class AIController : MonoBehaviour
         Destroy(_product);
         
         StopCoroutine(NaturalDec);
+
+        int randAmount = UnityEngine.Random.Range(100, 350);
+        EconomyManager.Instance.UpdateGold(randAmount);
         
         StartCoroutine(UpdateShoppingState(EShoppingState.Exit));
         StartCoroutine(UpdateMovementState(EMovementState.Moving));
@@ -222,7 +232,7 @@ public class AIController : MonoBehaviour
 
         if (other.GetComponent<Exit>())
         {
-            Destroy(gameObject);
+            GameManager.Instance.OnCustomerExit.Invoke(gameObject);
         }
     }
 }
